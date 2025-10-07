@@ -11,10 +11,3 @@ type Account struct {
 	Name    string  `json:"name"`
 	Balance float32 `json:"balance"`
 }
-
-type HttpRouter struct {
-	URL         string
-	Method      string
-	Accept      string
-	ContentType string
-}

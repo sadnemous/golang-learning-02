@@ -1,46 +1,29 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"reflect"
+	"simple/httputils"
 	"simple/types"
 )
 
-func handleRequest(payload []byte, router any) {
+func handleRequest(router *httputils.HttpRouter) {
 	fmt.Println("=== Request Handler ===")
-	fmt.Printf("Payload: %s\n", string(payload))
+	fmt.Printf("Payload: %s\n", string(router.Payload))
+	fmt.Printf("Method: %s\n", router.Method)
+	fmt.Printf("URL: %s\n", router.URL)
+	fmt.Printf("Accept: %s\n", router.Accept)
+	fmt.Printf("Content-Type: %s\n", router.ContentType)
 
-	if r, ok := router.(types.HttpRouter); ok {
-		fmt.Printf("Method: %s\n", r.Method)
-		fmt.Printf("URL: %s\n", r.URL)
-		fmt.Printf("Accept: %s\n", r.Accept)
-		fmt.Printf("Content-Type: %s\n", r.ContentType)
-
-		req, err := http.NewRequest(r.Method, r.URL, bytes.NewBuffer(payload))
-		if err != nil {
-			fmt.Println("Error creating request:", err)
-			return
-		}
-
-		req.Header.Set("Accept", r.Accept)
-		req.Header.Set("Content-Type", r.ContentType)
-
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			fmt.Println("Error sending request:", err)
-			return
-		}
-		defer resp.Body.Close()
-
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("\nResponse Status: %s\n", resp.Status)
-		fmt.Printf("Response Body: %s\n", string(body))
+	ctx := context.Background()
+	body, err := router.Send(ctx)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return
 	}
 
+	fmt.Printf("\nResponse Body: %s\n", string(body))
 }
 
 func printUser(user types.User) {
@@ -126,19 +109,16 @@ func main() {
 
 	jsonRequest := `{"name":"Bob","email":"bob@example.com"}`
 	payload := []byte(jsonRequest)
-	/*
-			curl -v -X POST http://127.0.0.1:5000/users \
-		  -H "Content-Type: application/json" \
-		  -d '{"name":"Bob","email":"bob@example.com"}'
-	*/
-	router := types.HttpRouter{
-		URL:         "http://127.0.0.1:5000/users",
-		Method:      "POST",
-		Accept:      "application/json",
-		ContentType: "application/json",
-	}
 
-	handleRequest(payload, router)
+	router := httputils.NewHttpRouter(
+		"http://127.0.0.1:5000/users",
+		"POST",
+		"application/json",
+		"application/json",
+		payload,
+	)
+
+	handleRequest(router)
 	return
 
 	var user_1 types.User = types.User{ID: 1, Name: "John Doe", Username: "johndoe"}
